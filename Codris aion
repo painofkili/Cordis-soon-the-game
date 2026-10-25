@@ -1,0 +1,507 @@
+html
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Кузница Образов</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        serif: ['Cinzel', 'serif'],
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        dark: { 950: '#09090b', 900: '#121216', 800: '#1c1c24', 700: '#2a2a36' },
+                        crimson: { 600: '#dc2626', 700: '#b91c1c', 900: '#7f1d1d' },
+                        gold: { 400: '#fbbf24', 500: '#f59e0b', 600: '#d97706' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #09090b;
+            background-image: 
+                radial-gradient(circle at 50% 0%, rgba(127, 29, 29, 0.15) 0%, transparent 60%),
+                radial-gradient(circle at 85% 90%, rgba(217, 119, 6, 0.1) 0%, transparent 50%);
+            min-height: 100vh;
+            -webkit-tap-highlight-color: transparent;
+        }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #121216; }
+        ::-webkit-scrollbar-thumb { background: #2a2a36; border-radius: 3px; }
+        .fantasy-border { border: 1px solid rgba(245, 158, 11, 0.2); box-shadow: 0 0 25px rgba(0, 0, 0, 0.9); }
+        .slot-active { border-color: #f59e0b !important; box-shadow: 0 0 15px rgba(245, 158, 11, 0.4); }
+    </style>
+</head>
+<body class="text-zinc-200 font-sans antialiased pb-20">
+
+    <!-- Тост-уведомление -->
+    <div id="toast" class="fixed top-4 left-1/2 -translate-x-1/2 z-[100] transform transition-all duration-300 -translate-y-24 opacity-0 pointer-events-none w-[90%] max-w-md">
+        <div class="bg-dark-800 border-l-4 border-gold-500 text-zinc-100 px-4 py-3 rounded-xl shadow-2xl flex items-start gap-3">
+            <span id="toast-icon" class="text-xl shrink-0 mt-0.5">✨</span>
+            <p id="toast-msg" class="text-sm font-medium leading-tight break-words"></p>
+        </div>
+    </div>
+
+    <!-- Загрузочный оверлей (теперь надежный) -->
+    <div id="loading-overlay" class="fixed inset-0 z-[200] bg-black/90 backdrop-blur-sm flex-col items-center justify-center p-6 hidden">
+        <div class="relative w-20 h-20 mb-6">
+            <div class="absolute inset-0 rounded-full border-4 border-gold-500/20 animate-pulse"></div>
+            <div class="absolute inset-0 rounded-full border-4 border-gold-500 border-t-transparent animate-spin"></div>
+            <div class="absolute inset-0 flex items-center justify-center text-3xl">🩸</div>
+        </div>
+        <h3 class="font-serif text-xl font-bold text-gold-400 mb-2 text-center">Создание...</h3>
+        <p id="loading-status" class="text-sm text-zinc-400 text-center max-w-sm">Обращаемся к темным силам</p>
+    </div>
+
+    <div class="max-w-[1500px] mx-auto p-4 sm:p-6 lg:p-8 flex flex-col gap-6">
+        
+        <!-- Шапка -->
+        <header class="bg-dark-900/80 backdrop-blur-md p-5 sm:p-6 rounded-2xl fantasy-border flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-4 text-center sm:text-left">
+                <span class="text-4xl">🩸</span>
+                <div>
+                    <h1 class="font-serif text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-gold-500 to-amber-600 tracking-wide uppercase">
+                        Кузница Образов
+                    </h1>
+                    <p class="text-xs text-zinc-400 mt-1">Генератор персонажей Темного Фэнтези</p>
+                </div>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+            
+            <!-- ЛЕВАЯ КОЛОНКА (Настройки) -->
+            <div class="lg:col-span-5 space-y-6 flex flex-col">
+                
+                <section class="bg-dark-900/90 p-5 sm:p-6 rounded-2xl border border-zinc-800 shadow-xl space-y-5">
+                    <div class="border-b border-zinc-800 pb-3">
+                        <h3 class="text-sm font-bold uppercase tracking-wider text-gold-400">🧬 ЭТАП 1: Анатомия</h3>
+                        <p class="text-[11px] text-zinc-400 mt-1">Только базовая форма (в белье/шкуре) для фиксации референса.</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs text-zinc-400 mb-1.5 font-medium uppercase tracking-wider">Пол</label>
+                            <select id="param-gender" onchange="updatePrompts()" class="w-full bg-dark-950 border border-zinc-700 focus:border-gold-500 rounded-xl px-3 py-2.5 text-sm text-zinc-100 outline-none">
+                                <option value="female" selected>Женский</option>
+                                <option value="male">Мужской</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs text-zinc-400 mb-1.5 font-medium uppercase tracking-wider">Раса</label>
+                            <select id="param-race" onchange="updatePrompts()" class="w-full bg-dark-950 border border-zinc-700 focus:border-gold-500 rounded-xl px-3 py-2.5 text-sm text-zinc-100 outline-none">
+                                <optgroup label="Гуманоиды (Белье)">
+                                    <option value="human" selected>Человек</option>
+                                    <option value="dark_elf">Эльф / Дроу</option>
+                                    <option value="demon">Демон / Суккуб</option>
+                                </optgroup>
+                                <optgroup label="Звери и Монстры (Естественный вид)">
+                                    <option value="wolf">Волк / Оборотень</option>
+                                    <option value="cat">Кошка / Пантера</option>
+                                    <option value="lamia">Ламия (Змея)</option>
+                                    <option value="bunny">Зайка / Крольчиха</option>
+                                    <option value="dryad">Дриада (Растение)</option>
+                                </optgroup>
+                            </select>
+                        </div>
+
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs text-zinc-400 mb-1.5 font-medium uppercase tracking-wider">Лицо</label>
+                            <select id="param-face" onchange="updatePrompts()" class="w-full bg-dark-950 border border-zinc-700 focus:border-gold-500 rounded-xl px-3 py-2.5 text-sm text-zinc-100 outline-none">
+                                <option value="highly alluring facial features, prominent sharp cheekbones, piercing seductive bedroom eyes, full luscious lips, elegant jawline" selected>Соблазнительное (Высокие скулы, пухлые губы)</option>
+                                <option value="cute innocent round facial structure, large expressive doe eyes, soft full cheeks, delicate button nose">Милое (Круглое лицо, огромные глаза)</option>
+                                <option value="brutal fierce battle-hardened facial structure, strong square jaw, intense predatory glare, sharp features">Брутальное / Суровое (Острые черты, хищный взгляд)</option>
+                                <option value="noble aristocratic elegant face, narrow delicate features, high forehead, piercing arrogant cold gaze">Аристократичное (Утонченное, холодный взгляд)</option>
+                            </select>
+                        </div>
+
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs text-zinc-400 mb-1.5 font-medium uppercase tracking-wider">Фигура</label>
+                            <select id="param-body" onchange="updatePrompts()" class="w-full bg-dark-950 border border-zinc-700 focus:border-gold-500 rounded-xl px-3 py-2.5 text-sm text-zinc-100 outline-none">
+                                <option value="voluptuous hourglass figure, extremely wide prominent hips, thick heavy thighs, large full bust, narrow cinched waist, stunning proportions" selected>Пышное / Песочные часы (Широкие бедра, объемные формы)</option>
+                                <option value="slender delicate elegant silhouette, very thin frame, petite athletic build, extremely narrow waist, small bust">Стройное / Изящное (Тонкая талия, аккуратные формы)</option>
+                                <option value="highly athletic muscular toned physique, visible chiseled abs, strong core, firm powerful warrior body">Атлетичное / Подтянутое (Ярко выраженные мышцы, пресс)</option>
+                                <option value="massive towering giant frame, incredibly huge muscular build, heavy heavyweight body, broad shoulders">Массивное / Крупное (Широкие плечи, гора мышц)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="pt-2 border-t border-zinc-800">
+                        <label class="block text-xs text-zinc-400 mb-3 font-medium uppercase tracking-wider">✨ Особенности (Опционально)</label>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="traits-container">
+                            <label class="flex items-center gap-2 cursor-pointer group">
+                                <input type="checkbox" value="glowing mystical eyes" onchange="updatePrompts()" class="trait-checkbox w-4 h-4 accent-gold-500 bg-dark-950 border-zinc-700 rounded">
+                                <span class="text-xs text-zinc-300 group-hover:text-white transition">Светящиеся глаза</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer group">
+                                <input type="checkbox" value="long flowing hair" onchange="updatePrompts()" class="trait-checkbox w-4 h-4 accent-gold-500 bg-dark-950 border-zinc-700 rounded" checked>
+                                <span class="text-xs text-zinc-300 group-hover:text-white transition">Длинные волосы</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer group">
+                                <input type="checkbox" value="messy wild hair" onchange="updatePrompts()" class="trait-checkbox w-4 h-4 accent-gold-500 bg-dark-950 border-zinc-700 rounded">
+                                <span class="text-xs text-zinc-300 group-hover:text-white transition">Дикая растрепанная прическа</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer group">
+                                <input type="checkbox" value="pale vampire skin" onchange="updatePrompts()" class="trait-checkbox w-4 h-4 accent-gold-500 bg-dark-950 border-zinc-700 rounded">
+                                <span class="text-xs text-zinc-300 group-hover:text-white transition">Бледная кожа</span>
+                            </label>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="bg-dark-900/90 p-4 rounded-2xl border border-zinc-800">
+                    <span class="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2 block">📜 Базовый Промпт (Для референса)</span>
+                    <textarea id="live-prompt-preview" readonly class="w-full h-24 bg-dark-950 border border-zinc-800 rounded-xl p-3 text-[11px] font-mono text-zinc-400 resize-none outline-none leading-relaxed"></textarea>
+                </section>
+            </div>
+
+            <!-- ПРАВАЯ КОЛОНКА (Генерация и Финал) -->
+            <div class="lg:col-span-7 flex flex-col gap-6">
+                
+                <!-- БЛОК ГЕНЕРАЦИИ БАЗЫ -->
+                <section class="bg-dark-900/90 p-5 sm:p-6 rounded-2xl border border-zinc-800 shadow-xl">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
+                        <div>
+                            <h3 class="text-sm font-bold uppercase tracking-wider text-gold-400">🖼️ 3 Варианта Базы</h3>
+                            <p class="text-[11px] text-zinc-400 mt-1">Простой фон, чтобы зафиксировать анатомию.</p>
+                        </div>
+                        <button onclick="generateAllSlots()" class="w-full sm:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 via-gold-500 to-amber-600 text-zinc-950 font-bold text-sm shadow hover:scale-[1.02] transition whitespace-nowrap">
+                            🎲 Создать базу
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4" id="slots-container">
+                        <!-- Рендерится через JS -->
+                    </div>
+                </section>
+
+                <!-- БЛОК ФИНАЛЬНОГО АРТА -->
+                <section class="bg-dark-900/90 p-5 sm:p-6 rounded-2xl fantasy-border flex flex-col shadow-2xl">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5 border-b border-zinc-800 pb-4">
+                        <div>
+                            <h3 class="text-sm font-bold uppercase tracking-wider text-emerald-400">🎬 ЭТАП 2: Финальный Арт</h3>
+                            <p class="text-[11px] text-zinc-400 mt-1">Лицо и тело будут взяты с выбранной базы!</p>
+                        </div>
+                        <span id="selected-slot-badge" class="text-[11px] font-bold px-3 py-1.5 rounded-xl bg-dark-950 text-crimson-600 border border-crimson-900/50 whitespace-nowrap">
+                            База не выбрана!
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+                        <div>
+                            <label class="block text-[11px] text-zinc-400 mb-1.5 font-medium uppercase tracking-wider">Откровенная Поза</label>
+                            <select id="stage2-pose" onchange="updatePrompts()" class="w-full bg-dark-950 border border-zinc-700 focus:border-gold-500 rounded-xl px-3 py-2 text-xs text-zinc-100 outline-none">
+                                <option value="alluring arched back pose, sensual stance, showcasing curves" selected>Соблазнительная (Выгнутая спина, акцент на формы)</option>
+                                <option value="intimate resting pose on knees, highly alluring">Интимная (На коленях)</option>
+                                <option value="dynamic wide dominant stance, powerful presence">Доминирующая (Широкая стойка)</option>
+                                <option value="predatory crouching pose, dynamic angle">Хищная (Пригнувшись / Крадется)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] text-zinc-400 mb-1.5 font-medium uppercase tracking-wider">Ракурс и Фон</label>
+                            <select id="stage2-scene" onchange="updatePrompts()" class="w-full bg-dark-950 border border-zinc-700 focus:border-gold-500 rounded-xl px-3 py-2 text-xs text-zinc-100 outline-none">
+                                <option value="dramatic low angle shot from below, atmospheric dark gothic dungeon" selected>Снизу вверх + Темное Подземелье</option>
+                                <option value="intimate cinematic close-up shot, dark foggy forest background">Крупный план + Туманный лес</option>
+                                <option value="dynamic dutch angle shot, dark fantasy tavern background">Наклонный ракурс + Таверна</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="bg-dark-950 p-4 rounded-xl border border-emerald-900/30 mb-5">
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-gold-400 mb-2">✨ Редактор Финала (Напишите здесь одежду)</label>
+                        <textarea id="final-prompt-preview" class="w-full h-32 bg-dark-900 border border-zinc-700 focus:border-emerald-500 rounded-xl p-3 text-xs font-mono text-emerald-300 resize-y outline-none transition leading-relaxed"></textarea>
+                    </div>
+
+                    <button onclick="generateFinalArt()" class="w-full py-4 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-extrabold text-sm uppercase tracking-wider shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:scale-[1.01] transition">
+                        🚀 СОЗДАТЬ ФИНАЛЬНЫЙ АРТ
+                    </button>
+
+                    <div id="art-output-container" class="mt-6 w-full min-h-[300px] bg-dark-950 border border-zinc-800 rounded-2xl flex flex-col items-center justify-center p-4 sm:p-6 text-center">
+                        <div id="art-placeholder" class="text-zinc-500 text-xs flex flex-col items-center gap-3 py-8">
+                            <span class="text-4xl opacity-50">🎨</span>
+                            <span class="max-w-xs">Выберите базу, опишите одежду и нажмите создать.</span>
+                        </div>
+                        <div id="art-result" class="hidden w-full flex flex-col items-center gap-5">
+                            <img id="generated-image" src="" alt="Dark Fantasy Art" class="max-h-[600px] w-auto max-w-full rounded-xl border border-gold-500/40 object-contain shadow-2xl">
+                            <a id="download-btn" href="#" download="dark_fantasy_art.png" class="px-8 py-3 rounded-xl bg-gold-500 hover:bg-gold-400 text-zinc-950 font-bold text-sm transition shadow-lg inline-flex items-center gap-2">
+                                📥 Скачать Арт
+                            </a>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedSlotIndex = null;
+        let slotsData = [
+            { name: 'База #1', imageUrl: null, generated: false, rawImageObj: null },
+            { name: 'База #2', imageUrl: null, generated: false, rawImageObj: null },
+            { name: 'База #3', imageUrl: null, generated: false, rawImageObj: null }
+        ];
+
+        // Строгий запрет на комиксы, текст, броню, татуировки
+        const NEGATIVE_PROMPT = ". NEGATIVE PROMPT: NO text, NO speech bubbles, NO comic panels, NO borders, NO UI, NO watermark, NO closed clothing, NO heavy armor, NO tattoos, NO runes on skin, NO markings.";
+
+        window.addEventListener('DOMContentLoaded', () => {
+            renderSlots();
+            updatePrompts();
+        });
+
+        function showToast(msg, icon = '✨') {
+            const toast = document.getElementById('toast');
+            const msgEl = document.getElementById('toast-msg');
+            const iconEl = document.getElementById('toast-icon');
+            if (toast && msgEl && iconEl) {
+                msgEl.innerText = msg;
+                iconEl.innerText = icon;
+                toast.classList.remove('-translate-y-24', 'opacity-0');
+                toast.classList.add('translate-y-0', 'opacity-100');
+                setTimeout(() => {
+                    toast.classList.add('-translate-y-24', 'opacity-0');
+                    toast.classList.remove('translate-y-0', 'opacity-100');
+                }, 4000);
+            }
+        }
+
+        function showLoading(show, text = "") {
+            const overlay = document.getElementById('loading-overlay');
+            const statusEl = document.getElementById('loading-status');
+            if (overlay && statusEl) {
+                statusEl.innerText = text;
+                if (show) overlay.style.display = 'flex';
+                else overlay.style.display = 'none';
+            }
+        }
+
+        function getBaseCharacterString() {
+            const gender = document.getElementById('param-gender')?.value || 'female';
+            const race = document.getElementById('param-race')?.value || 'human';
+            const face = document.getElementById('param-face')?.value || '';
+            const body = document.getElementById('param-body')?.value || '';
+
+            let traits = "";
+            const checkboxes = document.querySelectorAll('.trait-checkbox:checked');
+            if (checkboxes && checkboxes.length > 0) {
+                const traitValues = Array.from(checkboxes).map(cb => cb.value);
+                traits = ", " + traitValues.join(', ');
+            }
+
+            let clothingPart = "wearing ONLY minimal dark gothic two-piece lingerie (lace bra and panty), fully exposed midriff, highly alluring, NO armor, NO belts, NO pants";
+            if (['wolf', 'cat', 'lamia', 'bunny', 'dryad'].includes(race)) {
+                clothingPart = "completely uncovered natural animalistic form covered ONLY in natural fur / reptile scales / tree bark, NO clothes, NO fabric, NO armor, bare natural feral form";
+            }
+
+            return `Dark fantasy 2D character art, masterpiece, high contrast cel shading, detailed anatomy. Character: ${gender}, race: ${race}. Face: ${face}. Anatomy: ${body}. Attire: ${clothingPart}${traits}.`;
+        }
+
+        function updatePrompts() {
+            const baseStr = getBaseCharacterString();
+            
+            const basePreview = document.getElementById('live-prompt-preview');
+            if (basePreview) {
+                basePreview.value = `${baseStr} Setting: simple pure dark grey stone background, basic neutral standing pose, single character only${NEGATIVE_PROMPT}`;
+            }
+            
+            const finalPreview = document.getElementById('final-prompt-preview');
+            const pose = document.getElementById('stage2-pose')?.value || '';
+            const scene = document.getElementById('stage2-scene')?.value || '';
+            
+            // Если текст финала еще не меняли вручную, обновляем его
+            if (finalPreview && (!finalPreview.dataset.edited || finalPreview.dataset.edited === "false")) {
+                finalPreview.value = `${baseStr} \n\n[ЗАМЕНИТЕ ЭТОТ ТЕКСТ НА ВАШУ ОДЕЖДУ: e.g. wearing dark leather corset, thigh-high stockings, holding a glowing sword], \n\nPose & Camera: ${pose}, ${scene}, dramatic cinematic lighting, single character only${NEGATIVE_PROMPT}`;
+            }
+        }
+
+        // Помечаем финальный промпт как измененный вручную
+        document.getElementById('final-prompt-preview')?.addEventListener('input', function() {
+            this.dataset.edited = "true";
+        });
+
+        function renderSlots() {
+            const container = document.getElementById('slots-container');
+            if (!container) return;
+
+            container.innerHTML = slotsData.map((slot, idx) => `
+                <div onclick="selectSlot(${idx})" class="bg-dark-950 border-2 ${selectedSlotIndex === idx ? 'border-gold-500 slot-active shadow-lg shadow-gold-500/20' : 'border-zinc-800'} rounded-2xl p-3 flex flex-col justify-between cursor-pointer transition transform hover:scale-[1.02]">
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-bold ${selectedSlotIndex === idx ? 'text-gold-400' : 'text-zinc-400'}">${slot.name}</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full ${slot.generated ? 'bg-emerald-900/40 text-emerald-400 border border-emerald-700/40' : 'bg-zinc-800 text-zinc-500'}">
+                                ${slot.generated ? 'Готово' : 'Пусто'}
+                            </span>
+                        </div>
+                        <div class="w-full aspect-[3/4] bg-dark-900 rounded-xl border border-zinc-800 flex items-center justify-center text-zinc-600 text-xs mb-3 overflow-hidden relative shadow-inner">
+                            ${slot.generated && slot.imageUrl ? `<img src="${slot.imageUrl}" class="w-full h-full object-cover">` : '<span class="text-center px-4">Ожидает<br>генерации</span>'}
+                        </div>
+                    </div>
+                    <button class="w-full py-2 rounded-lg ${selectedSlotIndex === idx ? 'bg-gold-500 text-zinc-950 font-bold' : 'bg-dark-800 text-zinc-300'} text-xs transition">
+                        ${selectedSlotIndex === idx ? '✓ Выбрано для финала' : 'Выбрать слот'}
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function selectSlot(idx) {
+            if (!slotsData[idx].generated) {
+                showToast(`Сначала сгенерируйте базу!`, '⚠️');
+                return;
+            }
+            selectedSlotIndex = idx;
+            const badge = document.getElementById('selected-slot-badge');
+            if (badge) {
+                badge.innerText = `✅ Выбрана База #${idx + 1}`;
+                badge.className = "text-[11px] font-bold px-3 py-1.5 rounded-xl bg-emerald-900/30 text-emerald-400 border border-emerald-700/50 whitespace-nowrap";
+            }
+            renderSlots();
+            showToast(`База #${idx + 1} зафиксирована как референс`, '🎯');
+        }
+
+        async function generateAllSlots() {
+            showLoading(true, "Создаем 3 базовых концепта (простой фон, нейтральная поза)...");
+            try {
+                slotsData.forEach(s => { s.generated = false; s.imageUrl = null; s.rawImageObj = null; });
+                selectedSlotIndex = null;
+                renderSlots();
+
+                const badge = document.getElementById('selected-slot-badge');
+                if(badge) {
+                    badge.innerText = "База не выбрана!";
+                    badge.className = "text-[11px] font-bold px-3 py-1.5 rounded-xl bg-dark-950 text-crimson-600 border border-crimson-900/50 whitespace-nowrap";
+                }
+
+                const basePrompt = document.getElementById('live-prompt-preview').value;
+
+                for (let i = 0; i < slotsData.length; i++) {
+                    const uniquePrompt = basePrompt + ` [Seed: ${Date.now() + i}]`;
+                    const result = await callGeminiImageAPI(uniquePrompt, "3:4", null);
+                    slotsData[i].imageUrl = result.url;
+                    slotsData[i].rawImageObj = result.rawObj;
+                    slotsData[i].generated = true;
+                    renderSlots();
+                    // Небольшая задержка
+                    await new Promise(r => setTimeout(r, 800));
+                }
+                
+                showToast("Концепты готовы! Выберите лучший.", "✨");
+                selectSlot(0); 
+            } catch (err) {
+                console.error(err);
+                showToast(err.message, "⚠️");
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function generateFinalArt() {
+            const finalPrompt = document.getElementById('final-prompt-preview')?.value;
+            
+            let refImage = null;
+            if (selectedSlotIndex !== null && slotsData[selectedSlotIndex].generated && slotsData[selectedSlotIndex].rawImageObj) {
+                refImage = slotsData[selectedSlotIndex].rawImageObj;
+            } else {
+                showToast("Сначала выберите Базу для референса (ЭТАП 1)!", "⚠️");
+                return;
+            }
+
+            showLoading(true, "Финальный рендер... Применяем референс для сохранения лица и тела...");
+            
+            try {
+                const result = await callGeminiImageAPI(finalPrompt, "3:4", refImage);
+                
+                document.getElementById('art-placeholder')?.classList.add('hidden');
+                document.getElementById('art-result')?.classList.remove('hidden');
+                document.getElementById('generated-image').src = result.url;
+                document.getElementById('download-btn').href = result.url;
+                
+                showToast("Финальный арт готов!", "🎨");
+                setTimeout(() => {
+                    document.getElementById('art-output-container').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 300);
+
+            } catch (err) {
+                console.error(err);
+                showToast(err.message, "⚠️");
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function callGeminiImageAPI(promptText, aspectRatio = "3:4", referenceImage = null) {
+            // Без локальных проверок ключа. Платформа сама инжектит авторизацию в этот эндпоинт.
+            let apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent";
+
+            let requestParts = [];
+            
+            // Если есть картинка-база, передаем ее как строгий референс для Image-to-Image
+            if (referenceImage) {
+                requestParts = [
+                    { text: "CRITICAL INSTRUCTION: Use the attached image as a strict character reference. Keep the exact character face, facial features, body shape, and hair, but redraw them completely according to this new scene prompt: " + promptText },
+                    { inlineData: { mimeType: referenceImage.mimeType, data: referenceImage.data } }
+                ];
+            } else {
+                requestParts = [{ text: promptText }];
+            }
+
+            const payload = {
+                contents: [{ role: 'user', parts: requestParts }],
+                generationConfig: {
+                    responseModalities: referenceImage ? ['TEXT', 'IMAGE'] : ['IMAGE'],
+                    imageConfig: { aspectRatio: aspectRatio }
+                }
+            };
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errText = await response.text();
+                    console.error("Server Error details:", errText);
+                    throw new Error(`Ошибка сервера (${response.status}). Попробуйте позже.`);
+                }
+
+                const result = await response.json();
+
+                if (result.promptFeedback && result.promptFeedback.blockReason) {
+                    throw new Error("❌ Блокировка цензурой. Измените описание одежды.");
+                }
+                
+                if (result.candidates && result.candidates[0].finishReason === "SAFETY") {
+                     throw new Error("❌ Изображение заблокировано фильтрами (NSFW).");
+                }
+
+                const part = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+                
+                if (!part) {
+                     throw new Error("❌ Изображение не создано (Сбой платформы).");
+                }
+                
+                return {
+                    url: `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`,
+                    rawObj: { mimeType: part.inlineData.mimeType, data: part.inlineData.data }
+                };
+            } catch (error) {
+                console.error("API Call Error:", error);
+                throw error;
+            }
+        }
+    </script>
+</body>
+</html>
