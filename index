@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <!-- PWA МЕТА ТЕГИ ДЛЯ УСТАНОВКИ НА ТЕЛЕФОН -->
+    <meta name="theme-color" content="#09090b">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Кузница Pro">
+    <link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🩸</text></svg>">
+    
+    <script>
+        // Генерируем манифест на лету, чтобы браузер воспринимал это как приложение
+        const manifest = {
+            "name": "Кузница Образов - Pro",
+            "short_name": "Кузница Pro",
+            "start_url": window.location.href,
+            "display": "standalone",
+            "background_color": "#09090b",
+            "theme_color": "#09090b",
+            "icons": [{
+                "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48dGV4dCB5PSIuOWVtIiBmb250LXNpemU9IjkwIj7wn6epPC90ZXh0Pjwvc3ZnPg==",
+                "sizes": "192x192 512x512",
+                "type": "image/svg+xml"
+            }]
+        };
+        const blob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
+        const manifestURL = URL.createObjectURL(blob);
+        document.write('<link rel="manifest" href="' + manifestURL + '">');
+    </script>
+    
+    <title>Кузница Образов - Pro</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        serif: ['Cinzel', 'serif'],
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        dark: { 950: '#09090b', 900: '#121216', 800: '#1c1c24', 700: '#2a2a36' },
+                        crimson: { 600: '#dc2626', 700: '#b91c1c', 900: '#7f1d1d' },
+                        gold: { 400: '#fbbf24', 500: '#f59e0b', 600: '#d97706' },
+                        emerald: { 400: '#34d399', 500: '#10b981', 600: '#059669', 900: '#064e3b' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            min-height: 100vh;
+            min-height: 100dvh;
+            background-color: #09090b;
+        }
+        body {
+            background-image: 
+                radial-gradient(circle at 50% 0%, rgba(127, 29, 29, 0.15) 0%, transparent 60%),
+                radial-gradient(circle at 85% 90%, rgba(217, 119, 6, 0.1) 0%, transparent 50%);
+            background-attachment: fixed;
+            -webkit-tap-highlight-color: transparent;
+            overflow-x: hidden;
+        }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #121216; }
+        ::-webkit-scrollbar-thumb { background: #2a2a36; border-radius: 3px; }
+        .fantasy-border { border: 1px solid rgba(245, 158, 11, 0.2); box-shadow: 0 0 25px rgba(0, 0, 0, 0.9); }
+        .slot-active { border-color: #f59e0b !important; box-shadow: 0 0 15px rgba(245, 158, 11, 0.4); }
+        .locked-overlay { backdrop-filter: blur(4px); }
+    </style>
+</head>
+<body class="text-zinc-200 font-sans antialiased pb-24 relative">
+
+    <!-- Уведомления -->
+    <div id="toast" class="fixed top-4 left-1/2 -translate-x-1/2 z-[500] transform transition-all duration-300 -translate-y-24 opacity-0 pointer-events-none w-[90%] max-w-md">
+        <div class="bg-dark-800 border-l-4 border-gold-500 text-zinc-100 px-4 py-3 rounded-xl shadow-2xl flex items-start gap-3">
+            <span id="toast-icon" class="text-xl shrink-0 mt-0.5">✨</span>
+            <p id="toast-msg" class="text-sm font-medium leading-tight break-words"></p>
+        </div>
+    </div>
+
+    <!-- Загрузка -->
+    <div id="loading-overlay" class="fixed inset-0 z-[400] bg-black/90 backdrop-blur-sm flex-col items-center justify-center p-6 hidden">
+        <div class="relative w-20 h-20 mb-6">
+            <div class="absolute inset-0 rounded-full border-4 border-gold-500/20 animate-pulse"></div>
+            <div class="absolute inset-0 rounded-full border-4 border-gold-500 border-t-transparent animate-spin"></div>
+            <div class="absolute inset-0 flex items-center justify-center text-3xl">🩸</div>
+        </div>
+        <h3 class="font-serif text-xl font-bold text-gold-400 mb-2 text-center">Призыв магии...</h3>
+        <p id="loading-status" class="text-sm text-zinc-400 text-center max-w-sm">Обращаемся к темным силам</p>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО ПРЕДПРОСМОТРА КАРТИНКИ -->
+    <div id="image-modal" class="fixed inset-0 z-[600] bg-black/95 backdrop-blur-md hidden flex-col items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+        <button onclick="closePreviewModal()" class="absolute top-4 right-4 text-zinc-400 hover:text-white text-5xl w-12 h-12 flex items-center justify-center rounded-full bg-dark-900/50 z-10">&times;</button>
+        <div class="relative w-full max-w-lg flex flex-col items-center">
+            <h3 class="text-gold-400 font-serif mb-4 text-lg text-center">Просмотр Базы</h3>
+            <img id="modal-image" src="" class="w-full max-h-[70vh] object-contain rounded-xl border border-zinc-700 shadow-2xl">
+            <button id="modal-select-btn" class="mt-6 w-full py-4 bg-gradient-to-r from-gold-500 to-amber-600 text-black font-extrabold text-sm uppercase rounded-xl shadow-lg hover:scale-[1.02] transition">
+                ✅ ВЫБРАТЬ ЭТУ БАЗУ
+            </button>
+        </div>
+    </div>
+
+    <div class="max-w-[1500px] mx-auto p-4 sm:p-6 lg:p-8 flex flex-col gap-6">
+        
+        <!-- Шапка -->
+        <header class="bg-dark-900/80 backdrop-blur-md p-5 sm:p-6 rounded-2xl fantasy-border flex flex-col sm:flex-row items-center justify-between gap-4 sticky top-4 z-50">
+            <div class="flex items-center gap-4 text-center sm:text-left">
+                <span class="text-4xl drop-shadow-[0_0_10px_rgba(220,38,38,0.8)]">🩸</span>
+                <div>
+                    <h1 class="font-serif text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-gold-500 to-amber-600 tracking-wide uppercase">
+                        Кузница Образов
+                    </h1>
+                    <p class="text-xs text-zinc-400 mt-1">Генератор персонажей Темного Фэнтези</p>
+                </div>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+            
+            <!-- ЛЕВАЯ КОЛОНКА (База) -->
+            <div class="lg:col-span-5 space-y-6 flex flex-col">
+                
+                <section class="bg-dark-900/90 p-5 rounded-2xl border border-zinc-800 shadow-xl space-y-5">
+                    <div class="border-b border-zinc-800 pb-3">
+                        <h3 class="text-sm font-bold uppercase tracking-wider text-gold-400">🧬 ЭТАП 1: Анатомия</h3>
+                        <p class="text-[11px] text-zinc-400 mt-1">Создаем тело и лицо (в белье) для референса.</p>
+                    </div>
+
+                    <div class="space-y-4">
+                        
+                        <!-- Пол -->
+                        <div>
+                            <label class="block text-xs text-zinc-400 mb-1.5 font-medium uppercase tracking-wider">Пол</label>
+                            <select id="param-gender" onchange="handleSelectChange(this, 'custom-gender')" class="w-full bg-dark-950 border border-zinc-700 focus:border-gold-500 rounded-xl px-3 py-2.5 text-sm text-zinc-100 outline-none">
+                                <option value="female" selected>Женский</option>
+                                <option value="male">Мужской</option>
+                                <option value="custom">✍️ Свой вариант (Написать)</option>
+                            </select>
+                            <input type="text" id="custom-gender" placeholder="Напишите пол..." class="hidden w-full mt-2 bg-dark-900 border border-zinc-600 focus:border-gold-400 rounded-lg px-3 py-2 text-sm text-zinc-200 outline-none" oninput="updatePrompts()">
+                        </div>
+
+                        <!-- Раса -->
+                        <div>
+                            <label class="block text-xs text-zinc-400 mb-1.5 font-medium uppercase tracking-wider">Раса</label>
+                            <select id="param-race" onchange="handleSelectChange(this, 'custom-race')" class="w-full bg-dark-950 border border-zinc-700 focus:border-gold-500 rounded-xl px-3 py-2.5 text-sm text-zinc-100 outline-none">
+                                <option value="human" selected>Человек</option>
+                                <option value="dark_elf">Темный Эльф / Дроу</option>
+                                <option value="demon">Демон / Суккуб</option>
+                                <option value="wolf">Волк / Оборотень</option>
+                                <option value="cat">Кошка / Пантера</option>
+                                <option value="custom">✍️ Свой вариант (Написать)</option>
+                            </select>
+                            <input type="text" id="custom-race" placeholder="Например: Orc, Vampire..." class="hidden w-full mt-2 bg-dark-900 border border-zinc-600 focus:border-gold-400 rounded-lg px-3 py-2 text-sm text-zinc-200 outline-none" oninput="updatePrompts()">
+                        </div>
+
+                        <!-- Лицо -->
+                        <div>
+                            <label class="block text-xs text-zinc-400 mb-1.5 font-medium uppercase tracking-wider">Лицо</label>
+                            <select id="param-face" onchange="handleSelectChange(this, 'custom-face')" class="w-full bg-dark-950 border border-zinc-700 focus:border-gold-500 rounded-xl px-3 py-2.5 text-sm text-zinc-100 outline-none">
+                                <option value="highly alluring facial features, prominent sharp cheekbones, piercing seductive bedroom eyes, full luscious lips, elegant jawline" selected>Соблазнительное (Высокие скулы, пухлые губы)</option>
+                                <option value="highly alluring face, huge massive expressive doe eyes, sensual plump lips, stunning beauty">Соблазнительное + Большие глаза</option>
+                                <option value="cute innocent round facial structure, large expressive doe eyes, soft full cheeks, delicate button nose">Милое (Круглое лицо, огромные глаза)</option>
+                                <option value="mature strict elegant facial structure, sharp piercing gaze, authoritative look, refined sharp features">Зрелое / Строгое (Авторитетный взгляд)</option>
+                                <option value="sinister crazy unhinged expression, wide maniacal eyes, creepy alluring smile, dark circles">Зловещее / Безумное (Широкие глаза, пугающая улыбка)</option>
+                                <option value="brutal fierce battle-hardened facial structure, strong square jaw, intense predatory glare, sharp features">Брутальное / Суровое (Острые черты, хищный взгляд)</option>
+                                <option value="noble aristocratic elegant face, narrow delicate features, high forehead, piercing arrogant cold gaze">Аристократичное (Утонченное, холодный взгляд)</option>
+                                <option value="custom">✍️ Свой вариант (Написать)</option>
+                            </select>
+                            <input type="text" id="custom-face" placeholder="Опишите лицо на английском..." class="hidden w-full mt-2 bg-dark-900 border border-zinc-600 focus:border-gold-400 rounded-lg px-3 py-2 text-sm text-zinc-200 outline-none" oninput="updatePrompts()">
+                        </div>
+
+                        <!-- Фигура -->
+                        <div>
+                            <label class="block text-xs text-zinc-400 mb-1.5 font-medium uppercase tracking-wider">Фигура</label>
+                            <select id="param-body" onchange="handleSelectChange(this, 'custom-body')" class="w-full bg-dark-950 border border-zinc-700 focus:border-gold-500 rounded-xl px-3 py-2.5 text-sm text-zinc-100 outline-none">
+                                <option value="perfect voluptuous hourglass figure, large full bust, extremely wide curvy hips, large prominent glutes, narrow cinched waist, stunning proportions" selected>Песочные часы (Пышная грудь и попа)</option>
+                                <option value="slender delicate frame but with massive large full bust, thin waist, narrow hips, top-heavy proportions">Стройная + Пышная грудь (Акцент на верх)</option>
+                                <option value="pear shaped body, very wide massive hips, thick heavy thighs, large plump glutes, small modest bust, narrow delicate shoulders">Груша (Акцент на низ, скромный бюст)</option>
+                                <option value="slender delicate elegant silhouette, very thin frame, petite athletic build, extremely narrow waist, small bust">Стройное / Изящное (Тонкая талия, аккуратные формы)</option>
+                                <option value="highly athletic muscular toned physique, visible chiseled abs, strong core, firm powerful warrior body">Атлетичное / Подтянутое (Пресс и мышцы)</option>
+                                <option value="custom">✍️ Свой вариант (Написать)</option>
+                            </select>
+                            <input type="text" id="custom-body" placeholder="Опишите фигуру на английском..." class="hidden w-full mt-2 bg-dark-900 border border-zinc-600 focus:border-gold-400 rounded-lg px-3 py-2 text-sm text-zinc-200 outline-none" oninput="updatePrompts()">
+                        </div>
+
+                        <!-- Волосы (Грид) -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs text-zinc-400 mb-1.5 font-medium uppercase tracking-wider">Цвет Волос</label>
+                                <select id="param-hair-color" onchange="handleSelectChange(this, 'custom-hair-color')" class="w-full bg-dark-950 border border-zinc-700 focus:border-gold-500 rounded-xl px-2 py-2 text-sm text-zinc-100 outline-none">
+                                    <option value="pitch black" selected>Черные как смоль</option>
+                                    <option value="snow white">Белоснежные</option>
+                                    <option value="blood red">Кроваво-красные</option>
+                                    <option value="golden blonde">Золотистый блонд</option>
+                                    <option value="ash silver">Пепельно-серебристые</option>
+                                    <option value="custom">✍️ Свой вариант</option>
+                                </select>
+                                <input type="text" id="custom-hair-color" placeholder="Напишите цвет..." class="hidden w-full mt-2 bg-dark-900 border border-zinc-600 rounded-lg px-2 py-1.5 text-sm text-zinc-200 outline-none" oninput="updatePrompts()">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-zinc-400 mb-1.5 font-medium uppercase tracking-wider">Прическа</label>
+                                <select id="param-hair-style" onchange="handleSelectChange(this, 'custom-hair-style')" class="w-full bg-dark-950 border border-zinc-700 focus:border-gold-500 rounded-xl px-2 py-2 text-sm text-zinc-100 outline-none">
+                                    <option value="long straight flowing hair" selected>Длинные прямые</option>
+                                    <option value="long elegant wavy hair">Длинные волнистые</option>
+                                    <option value="sharp short bob cut hair">Короткое каре</option>
+                                    <option value="high tight ponytail hair">Высокий хвост</option>
+                                    <option value="intricate thick braided hair">Сложные косы</option>
+                                    <option value="elaborate high updo hairstyle">Сложная высокая (Updo)</option>
+                                    <option value="wild messy untamed hair">Дикая / Растрепанная</option>
+                                    <option value="completely bald shaven head">Лысая</option>
+                                    <option value="custom">✍️ Свой вариант</option>
+                                </select>
+                                <input type="text" id="custom-hair-style" placeholder="Напишите прическу..." class="hidden w-full mt-2 bg-dark-900 border border-zinc-600 rounded-lg px-2 py-1.5 text-sm text-zinc-200 outline-none" oninput="updatePrompts()">
+                            </div>
+                        </div>
+
+                    </div>
+                </section>
+
+                <!-- БЛОК ГЕНЕРАЦИИ БАЗЫ -->
+                <section class="bg-dark-900/90 p-5 rounded-2xl border border-zinc-800 shadow-xl flex flex-col gap-4">
+                    <div class="flex flex-col sm:flex-row justify-between items-center gap-4 text-center sm:text-left">
+                        <div>
+                            <h3 class="text-sm font-bold uppercase tracking-wider text-gold-400">🖼️ ЭТАП 2: Создать Базу</h3>
+                            <p class="text-[11px] text-zinc-400 mt-1">Создадим 3 варианта. <b>Жмите на фото для увеличения!</b></p>
+                        </div>
+                        <button onclick="generateAllSlots()" class="w-full sm:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-zinc-950 font-bold text-sm shadow-lg shadow-amber-500/20 hover:scale-[1.02] transition whitespace-nowrap">
+                            🎲 Сгенерировать
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2 sm:gap-4 mt-2" id="slots-container">
+                        <!-- Рендерится через JS -->
+                    </div>
+                </section>
+            </div>
+
+            <!-- ПРАВАЯ КОЛОНКА (Финал) -->
+            <div class="lg:col-span-7 relative flex flex-col h-full min-h-[500px]">
+                
+                <!-- ОВЕРЛЕЙ БЛОКИРОВКИ -->
+                <div id="final-lock-overlay" class="absolute inset-0 z-10 bg-dark-950/70 locked-overlay rounded-2xl flex flex-col items-center justify-center border border-zinc-800 transition-all duration-500">
+                    <div class="bg-dark-900 p-6 rounded-2xl text-center border border-zinc-700 shadow-2xl max-w-sm flex flex-col items-center mx-4">
+                        <span class="text-4xl mb-3">🔒</span>
+                        <h3 class="text-gold-400 font-bold text-lg mb-2">Этап Финала Заблокирован</h3>
+                        <p class="text-zinc-400 text-xs leading-relaxed">Сначала настройте параметры слева, нажмите <b>«Сгенерировать»</b> и <b>выберите</b> одну из трех баз, кликнув на неё (откроется окно).</p>
+                    </div>
+                </div>
+
+                <section id="final-section" class="bg-dark-900/90 p-5 sm:p-6 rounded-2xl fantasy-border flex flex-col shadow-2xl h-full transition-opacity duration-500 opacity-50 relative">
+                    
+                    <div class="flex justify-between items-center mb-6 border-b border-zinc-800 pb-4">
+                        <div>
+                            <h3 class="text-base font-bold uppercase tracking-wider text-emerald-400">🎬 ЭТАП 3: Окружение и Арт</h3>
+                            <p class="text-xs text-zinc-400 mt-1">Лицо и тело будут перенесены из выбранной базы</p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-5 mb-6 flex-grow">
+                        
+                        <!-- ОДЕЖДА -->
+                        <div>
+                            <label class="block text-xs font-bold text-emerald-400 mb-2 uppercase tracking-wider">⚔️ Одежда / Броня</label>
+                            <select id="stage3-clothes" onchange="handleSelectChange(this, 'custom-clothes')" class="w-full bg-dark-950 border border-zinc-700 focus:border-emerald-500 rounded-xl px-3 py-3 text-sm text-zinc-100 outline-none shadow-inner">
+                                <option value="" disabled selected>-- Выберите одежду --</option>
+                                <option value="extremely revealing ultra-short fantasy mini dress, skin-tight clinging perfectly to every curve, worn directly over bare skin, highly alluring dark fantasy style">🔥 Откровенное облегающее фэнтези мини на голое тело</option>
+                                <option value="heavy gothic plate armor, intricate dark metal engravings, majestic pauldrons, armored skirt">Тяжелая темная броня (Готика)</option>
+                                <option value="light assassin leather armor, tight dark straps, hooded cloak, belts and pouches">Легкая броня ассасина (Кожа и ремни)</option>
+                                <option value="elegant dark fantasy royal gown, rich velvet fabric, gold embroidery, deep neckline">Королевское темное платье (Бархат и золото)</option>
+                                <option value="torn ruined rags, dirty bandages, chains, enslaved prisoner look">Рваные лохмотья и цепи (Пленница)</option>
+                                <option value="custom">✍️ Свой вариант (Написать)</option>
+                            </select>
+                            <input type="text" id="custom-clothes" placeholder="Напишите одежду (на английском)..." class="hidden w-full mt-2 bg-dark-950 border border-emerald-900 focus:border-emerald-500 rounded-lg px-3 py-3 text-sm text-emerald-100 outline-none" oninput="updatePrompts()">
+                        </div>
+
+                        <!-- ПОЗА И РАКУРС -->
+                        <div>
+                            <label class="block text-xs font-bold text-emerald-400 mb-2 uppercase tracking-wider">📸 Поза и Ракурс</label>
+                            <select id="stage3-pose" onchange="handleSelectChange(this, 'custom-pose')" class="w-full bg-dark-950 border border-zinc-700 focus:border-emerald-500 rounded-xl px-3 py-3 text-sm text-zinc-100 outline-none shadow-inner">
+                                <option value="" disabled selected>-- Выберите позу --</option>
+                                <option value="Extreme low angle shot from directly below her legs, character hovering mid-air over a corrupted glowing undead corpse resurrected by her dark necromancy magic emanating from her hands, extreme focus on her beautiful legs and panties, dynamic dramatic perspective">💀 Некромантка: ракурс снизу, парит над мертвецом (Акцент на ножки и трусы)</option>
+                                <option value="alluring arched back pose, sensual stance, showcasing curves, facing camera">Соблазнительная (Выгнутая спина, лицом в камеру)</option>
+                                <option value="dynamic combat pose, wielding a glowing weapon, mid-action strike">Боевая (В замахе с оружием)</option>
+                                <option value="sitting arrogantly on an imposing dark throne, legs crossed, dominant posture">Сидит на троне (Доминирующая, нога на ногу)</option>
+                                <option value="custom">✍️ Свой вариант (Написать)</option>
+                            </select>
+                            <input type="text" id="custom-pose" placeholder="Напишите позу (на английском)..." class="hidden w-full mt-2 bg-dark-950 border border-emerald-900 focus:border-emerald-500 rounded-lg px-3 py-3 text-sm text-emerald-100 outline-none" oninput="updatePrompts()">
+                        </div>
+
+                        <!-- ФОН -->
+                        <div>
+                            <label class="block text-xs font-bold text-emerald-400 mb-2 uppercase tracking-wider">🏰 Локация / Фон</label>
+                            <select id="stage3-bg" onchange="handleSelectChange(this, 'custom-bg')" class="w-full bg-dark-950 border border-zinc-700 focus:border-emerald-500 rounded-xl px-3 py-3 text-sm text-zinc-100 outline-none shadow-inner">
+                                <option value="" disabled selected>-- Выберите фон --</option>
+                                <option value="dark atmospheric gothic dungeon, stone walls, flickering torches, iron chains">Темное подземелье (Факелы, цепи)</option>
+                                <option value="burning abyssal hellscape, fiery lava rivers, dark smoke, demonic ruins">Пылающая бездна (Лава, демонические руины)</option>
+                                <option value="mystical enchanted dark forest, glowing blue mushrooms, thick fog, moonlight">Зачарованный лес (Светящиеся грибы, туман)</option>
+                                <option value="grand ruined gothic cathedral, shattered stained glass windows, moonlight piercing through">Руины готического собора (Лунный свет)</option>
+                                <option value="custom">✍️ Свой вариант (Написать)</option>
+                            </select>
+                            <input type="text" id="custom-bg" placeholder="Напишите фон (на английском)..." class="hidden w-full mt-2 bg-dark-950 border border-emerald-900 focus:border-emerald-500 rounded-lg px-3 py-3 text-sm text-emerald-100 outline-none" oninput="updatePrompts()">
+                        </div>
+
+                    </div>
+
+                    <button id="generate-final-btn" onclick="generateFinalArt()" class="w-full py-4 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-extrabold text-sm uppercase tracking-wider shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:scale-[1.01] transition disabled:opacity-50 disabled:cursor-not-allowed">
+                        🚀 СОЗДАТЬ ФИНАЛЬНЫЙ АРТ
+                    </button>
+
+                    <div id="art-output-container" class="mt-6 w-full bg-dark-950 border border-zinc-800 rounded-2xl flex flex-col items-center justify-center p-2 sm:p-4 text-center">
+                        <div id="art-result" class="hidden w-full flex flex-col items-center gap-4">
+                            <img id="generated-image" src="" class="max-h-[600px] w-auto max-w-full rounded-xl border border-gold-500/40 shadow-2xl object-contain">
+                            <a id="download-btn" href="#" download="epic_art.png" class="px-8 py-3 rounded-xl bg-gold-500 hover:bg-gold-400 text-zinc-950 font-bold text-sm transition shadow-lg flex items-center gap-2">
+                                📥 Скачать
+                            </a>
+                        </div>
+                        <div id="art-placeholder" class="text-zinc-500 text-xs py-8">
+                            Арт появится здесь
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- Скрытые поля для внутренних промптов -->
+    <textarea id="live-prompt-preview" class="hidden"></textarea>
+    <textarea id="final-prompt-preview" class="hidden"></textarea>
+
+    <script>
+        let selectedSlotIndex = null;
+        let activePreviewIndex = null;
+        let slotsData = [
+            { generated: false, imageUrl: null, rawObj: null },
+            { generated: false, imageUrl: null, rawObj: null },
+            { generated: false, imageUrl: null, rawObj: null }
+        ];
+
+        const NEGATIVE_PROMPT = ". NEGATIVE PROMPT: NO text, NO speech bubbles, NO UI, NO watermark, NO closed clothing on base, NO heavy armor on base.";
+
+        window.addEventListener('DOMContentLoaded', () => {
+            renderSlots();
+            updatePrompts();
+        });
+
+        function handleSelectChange(selectElement, customInputId) {
+            const customInput = document.getElementById(customInputId);
+            if (selectElement.value === 'custom') {
+                customInput.classList.remove('hidden');
+            } else {
+                customInput.classList.add('hidden');
+            }
+            updatePrompts();
+        }
+
+        function getParamValue(selectId, inputId) {
+            const select = document.getElementById(selectId);
+            if (!select) return '';
+            if (select.value === 'custom') {
+                return document.getElementById(inputId)?.value || '';
+            }
+            return select.value;
+        }
+
+        function showToast(msg, icon = '✨') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            document.getElementById('toast-icon').innerText = icon;
+            toast.classList.remove('-translate-y-24', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+            setTimeout(() => {
+                toast.classList.add('-translate-y-24', 'opacity-0');
+                toast.classList.remove('translate-y-0', 'opacity-100');
+            }, 4000);
+        }
+
+        function showLoading(show, text = "") {
+            const overlay = document.getElementById('loading-overlay');
+            if (overlay) {
+                document.getElementById('loading-status').innerText = text;
+                overlay.style.display = show ? 'flex' : 'none';
+            }
+        }
+
+        function getBaseCharacterString() {
+            const gender = getParamValue('param-gender', 'custom-gender') || 'female';
+            const race = getParamValue('param-race', 'custom-race') || 'human';
+            const face = getParamValue('param-face', 'custom-face');
+            const body = getParamValue('param-body', 'custom-body');
+            const hColor = getParamValue('param-hair-color', 'custom-hair-color');
+            const hStyle = getParamValue('param-hair-style', 'custom-hair-style');
+
+            let clothingPart = "wearing ONLY minimal dark gothic two-piece lingerie (lace bra and panty), fully exposed midriff, highly alluring, NO armor";
+            if (['wolf', 'cat'].includes(race)) clothingPart = "natural feral animalistic form, no clothes";
+
+            return `Dark fantasy 2D character art, masterpiece, cel shading. Character: ${gender}. Race: ${race}. Hair: ${hColor}, ${hStyle}. Face: ${face}. Anatomy: ${body}. Attire for reference: ${clothingPart}.`;
+        }
+
+        function updatePrompts() {
+            const baseStr = getBaseCharacterString();
+            document.getElementById('live-prompt-preview').value = `${baseStr} Setting: simple pure dark grey stone background, basic neutral standing pose${NEGATIVE_PROMPT}`;
+            
+            const clothes = getParamValue('stage3-clothes', 'custom-clothes');
+            const pose = getParamValue('stage3-pose', 'custom-pose');
+            const bg = getParamValue('stage3-bg', 'custom-bg');
+            
+            document.getElementById('final-prompt-preview').value = `${baseStr} \n\nAttire/Clothing: ${clothes}, \nPose/Camera: ${pose}, \nBackground: ${bg}, dramatic lighting${NEGATIVE_PROMPT}`;
+        }
+
+        function renderSlots() {
+            const container = document.getElementById('slots-container');
+            if (!container) return;
+
+            container.innerHTML = slotsData.map((slot, idx) => `
+                <div onclick="handleSlotClick(${idx})" class="bg-dark-950 border-2 ${selectedSlotIndex === idx ? 'border-gold-500 slot-active shadow-lg shadow-gold-500/20' : 'border-zinc-800'} rounded-xl p-2 flex flex-col justify-between cursor-pointer transition transform hover:scale-[1.02] relative group">
+                    <span class="text-[10px] font-bold text-center mb-1 ${selectedSlotIndex === idx ? 'text-gold-400' : 'text-zinc-500'}">База #${idx + 1}</span>
+                    <div class="w-full aspect-[3/4] bg-dark-900 rounded-lg border border-zinc-800 flex items-center justify-center text-zinc-600 text-xs overflow-hidden relative">
+                        ${slot.generated && slot.imageUrl ? `
+                            <img src="${slot.imageUrl}" class="w-full h-full object-cover">
+                            <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center backdrop-blur-sm">
+                                <span class="text-white text-3xl mb-1">🔍</span>
+                                <span class="text-white text-[10px] font-bold">Увеличить</span>
+                            </div>
+                        ` : '❔'}
+                    </div>
+                </div>
+            `).join('');
+
+            const overlay = document.getElementById('final-lock-overlay');
+            const section = document.getElementById('final-section');
+            if (selectedSlotIndex !== null) {
+                overlay.style.opacity = '0';
+                setTimeout(() => overlay.style.display = 'none', 300);
+                section.classList.remove('opacity-50');
+                section.classList.add('opacity-100');
+            } else {
+                overlay.style.display = 'flex';
+                setTimeout(() => overlay.style.opacity = '1', 10);
+                section.classList.add('opacity-50');
+                section.classList.remove('opacity-100');
+            }
+        }
+
+        function handleSlotClick(idx) {
+            if (!slotsData[idx].generated) {
+                showToast(`Сначала сгенерируйте базу!`, '⚠️');
+                return;
+            }
+            // Открываем модалку предпросмотра
+            activePreviewIndex = idx;
+            const modal = document.getElementById('image-modal');
+            document.getElementById('modal-image').src = slotsData[idx].imageUrl;
+            
+            // Настраиваем кнопку в модалке
+            const btn = document.getElementById('modal-select-btn');
+            btn.onclick = () => { selectSlot(idx); closePreviewModal(); };
+            
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.remove('opacity-0'), 10);
+        }
+
+        function closePreviewModal() {
+            const modal = document.getElementById('image-modal');
+            modal.classList.add('opacity-0');
+            setTimeout(() => { modal.style.display = 'none'; activePreviewIndex = null; }, 300);
+        }
+
+        function selectSlot(idx) {
+            selectedSlotIndex = idx;
+            renderSlots();
+            showToast(`База #${idx + 1} выбрана! Доступ к финалу открыт.`, '🔓');
+            
+            if(window.innerWidth < 1024) {
+                document.getElementById('final-section').scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+
+        async function generateAllSlots() {
+            showLoading(true, "Создаем 3 варианта анатомии...");
+            try {
+                slotsData.forEach(s => { s.generated = false; s.imageUrl = null; s.rawObj = null; });
+                selectedSlotIndex = null;
+                renderSlots();
+
+                const basePrompt = document.getElementById('live-prompt-preview').value;
+
+                for (let i = 0; i < 3; i++) {
+                    const uniquePrompt = basePrompt + ` [Seed: ${Date.now() + i}]`;
+                    const result = await callGeminiAPI(uniquePrompt, "3:4", null);
+                    slotsData[i].imageUrl = result.url;
+                    slotsData[i].rawObj = result.rawObj;
+                    slotsData[i].generated = true;
+                    renderSlots();
+                    await new Promise(r => setTimeout(r, 600));
+                }
+                
+                showToast("Базы готовы! Кликните на фото для предпросмотра.", "✨");
+            } catch (err) {
+                showToast(err.message, "⚠️");
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function generateFinalArt() {
+            if (selectedSlotIndex === null) return;
+
+            const clothes = getParamValue('stage3-clothes', 'custom-clothes');
+            const pose = getParamValue('stage3-pose', 'custom-pose');
+            const bg = getParamValue('stage3-bg', 'custom-bg');
+
+            if(!clothes || !pose || !bg) {
+                showToast("Выберите одежду, позу и фон для генерации!", "⚠️");
+                return;
+            }
+
+            const finalPrompt = document.getElementById('final-prompt-preview').value;
+            const refImage = slotsData[selectedSlotIndex].rawObj;
+
+            showLoading(true, "Одеваем персонажа и рендерим окружение...");
+            
+            try {
+                const result = await callGeminiAPI(finalPrompt, "3:4", refImage);
+                
+                document.getElementById('art-placeholder').classList.add('hidden');
+                document.getElementById('art-result').classList.remove('hidden');
+                document.getElementById('generated-image').src = result.url;
+                document.getElementById('download-btn').href = result.url;
+                
+                showToast("Готово! Эпичный арт создан.", "🔥");
+                
+                setTimeout(() => {
+                    document.getElementById('art-output-container').scrollIntoView({ behavior: 'smooth', block: 'end' });
+                }, 300);
+
+            } catch (err) {
+                showToast(err.message, "⚠️");
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function callGeminiAPI(promptText, aspectRatio = "3:4", referenceImage = null) {
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent`;
+            
+            let requestParts = [];
+            
+            if (referenceImage) {
+                requestParts = [
+                    { text: "CRITICAL: Use the attached image as a strict character reference for face and body shape. Apply this new prompt perfectly: " + promptText },
+                    { inlineData: { mimeType: referenceImage.mimeType, data: referenceImage.data } }
+                ];
+            } else {
+                requestParts = [{ text: promptText }];
+            }
+
+            const payload = {
+                contents: [{ role: 'user', parts: requestParts }],
+                generationConfig: {
+                    responseModalities: referenceImage ? ['TEXT', 'IMAGE'] : ['IMAGE'],
+                    imageConfig: { aspectRatio: aspectRatio }
+                }
+            };
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                throw new Error(`Ошибка сервера. Проверьте запрос. Возможно цензура.`);
+            }
+            
+            const result = await response.json();
+
+            if (result.promptFeedback?.blockReason || result.candidates?.[0]?.finishReason === "SAFETY") {
+                throw new Error("❌ Блокировка цензурой. Измените параметры на менее откровенные.");
+            }
+
+            const part = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+            if (!part) throw new Error("❌ Сбой генерации.");
+            
+            return {
+                url: `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`,
+                rawObj: { mimeType: part.inlineData.mimeType, data: part.inlineData.data }
+            };
+        }
+    </script>
+</body>
+</html>
